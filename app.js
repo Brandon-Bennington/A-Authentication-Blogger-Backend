@@ -1,49 +1,86 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-const cors = require("cors");
-require("dotenv").config();
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const app = express();
+require('dotenv').config();
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-
-var { mongoConnect } = require('./mongo.js');
-mongoConnect();
-
-var app = express();
-
+// Middlewares
 app.use(cors());
-app.options("*", cors());
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-
-app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+// Routes
+const blogRoutes = require('./routes/blogRoutes');
+const userRoutes = require('./routes/users');
+app.use('/blogs', blogRoutes);
+app.use('/users', userRoutes);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+// MongoDB Connection
+mongoose.connect(process.env.ATLAS_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: process.env.ATLAS_BLOG_DATABASE
+});
+const connection = mongoose.connection;
+connection.once('open', () => {
+  console.log('MongoDB database connection established successfully');
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+
+
+
+/*
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+
+// Import your routes
+const blogRoutes = require('./routes/blogRoutes');
+app.use('/api/blogs', blogRoutes);
+
+// MongoDB connection
+const uri = process.env.ATLAS_URI;
+const db = process.env.MONGO_DATABASE;
+
+mongoose.connect(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  dbName: db // Use the MONGO_DATABASE environment variable as the database name
+});
+mongoose.connection.on('connected', () => {
+  console.log('Connected to MongoDB cluster');
+});
+
+// Error handling
+app.use((req, res, next) => {
+  const error = new Error('Not found');
+  error.status = 404;
+  next(error);
+});
+
+app.use((error, req, res, next) => {
+  res.status(error.status || 500);
+  res.json({
+    error: {
+      message: error.message,
+    },
+  });
 });
 
 module.exports = app;
+*/
